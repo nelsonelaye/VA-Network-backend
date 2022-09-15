@@ -1,7 +1,13 @@
 const mongoose = require("mongoose");
 
-const userSchema = mongoose.Schema(
+const volunteerSchema = mongoose.Schema(
   {
+    avatar: {
+      type: String,
+    },
+    avatarId: {
+      type: String,
+    },
     firstName: {
       type: String,
     },
@@ -28,8 +34,16 @@ const userSchema = mongoose.Schema(
     interests: {
       type: Array,
     },
+    isVerify: {
+      type: Boolean,
+      default: false,
+    },
+    testimonials: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "testimonials",
+    },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("users", userSchema);
+module.exports = mongoose.model("volunteers", volunteerSchema);
