@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const authorizeNgo = require("../config/authorize");
 const {
   getAllProjects,
   getOneProject,

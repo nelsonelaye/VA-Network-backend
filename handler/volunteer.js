@@ -34,7 +34,7 @@ const getOneVolunteer = async (req, res) => {
   }
 };
 
-const register = async (req, res) => {
+const registerVolunteer = async (req, res) => {
   try {
     const {
       firstName,
@@ -65,22 +65,27 @@ const register = async (req, res) => {
         const hashed = await bcrypt.hash(password, salt);
 
         const token = crypto.randomBytes(16).toString("hex");
-        // const volunteer = await volunteerModel.create({
-        //   firstName,
-        //   lastName,
-        //   email,
-        //   telephone,
-        //   password: hashed,
-        //   bio,
-        //   interests,
-        //   DOB,
-        // });
+        const volunteer = await volunteerModel.create({
+          firstName,
+          lastName,
+          email,
+          telephone,
+          password: hashed,
+          bio,
+          interests,
+          DOB,
+        });
+
+        const verifyLink = `http://localhost:2000/api/volunteer/${volunteer._id}/verify/${token}`;
 
         const message = {
           from: "nelsonelaye@gmail.com",
           to: email,
           subject: "Email verification",
-          text: "Please verify your email",
+          html: `<p>Confirm your account by clicking the link below</p>
+          <p><a href=${verifyLink}>Click here to continue</a></p>
+          <p>You are receiving this mail because you signed up on our platform, <b>Volunteer Africa Network</b>. Ignore this message if you did not take this action.</p>
+          `,
         };
         await transporter.sendMail(message, (err, info) => {
           if (err) {
@@ -90,7 +95,9 @@ const register = async (req, res) => {
           }
         });
 
-        // const verifyLink = `http://localhost:2000/api/volunteer/${volunteer._id}/verify/${token}`;
+        res.status(201).json({
+          message: "Please check your inbox/spam to confirm your account.",
+        });
       }
     }
   } catch (error) {
@@ -107,7 +114,7 @@ const verifyVolunteer = async (req, res) => {
 
     if (!volunteer) {
       res.status(404).json({
-        message: "user does not exist. Create an account to continue",
+        message: "user not found. Create an account to continue",
       });
     } else {
       const updateVolunteer = await volunteerModel.findByIdAndUpdate(
@@ -119,8 +126,7 @@ const verifyVolunteer = async (req, res) => {
       );
 
       res.status(200).json({
-        message: "Volunteer verification complete",
-        data: updateVolunteer,
+        message: "Verification complete. Proceed to login.",
       });
     }
   } catch (error) {
@@ -130,7 +136,7 @@ const verifyVolunteer = async (req, res) => {
   }
 };
 
-const login = async (req, res) => {
+const loginVolunteer = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -139,28 +145,35 @@ const login = async (req, res) => {
     if (volunteer) {
       const correctPass = await bcrypt.compare(password, volunteer.password);
 
-      if (correctPass) {
-        const { password, ...restData } = volunteer._doc;
-        const accessToken = jwt.sign(
-          {
-            _id: volunteer._id,
-            firstName: volunteer.firstName,
-            lastName: volunteer.lastName,
-            email: volunteer.email,
-            telephone: volunteer.telephone,
-            DOB: volunteer.DOB,
-            bio: volunteer.bio,
-          },
-          process.env.SECRET,
-          { expiresIn: "1d" }
-        );
+      if (volunteer.isVerify === true) {
+        if (correctPass) {
+          const { password, ...restData } = volunteer._doc;
+          const accessToken = jwt.sign(
+            {
+              _id: volunteer._id,
+              firstName: volunteer.firstName,
+              lastName: volunteer.lastName,
+              email: volunteer.email,
+              telephone: volunteer.telephone,
+              DOB: volunteer.DOB,
+              bio: volunteer.bio,
+            },
+            process.env.SECRET,
+            { expiresIn: "1d" }
+          );
 
-        res.status(200).json({
-          data: { accessToken, ...restData },
-        });
+          res.status(200).json({
+            data: { accessToken, ...restData },
+          });
+        } else {
+          res.status(400).json({
+            message: "password is incorrect",
+          });
+        }
       } else {
         res.status(400).json({
-          message: "password is incorrect",
+          message:
+            "volunteer not verified. Check your inbox/spam folder for verification link.",
         });
       }
     } else {
@@ -237,8 +250,9 @@ const deleteAll = async (req, res) => {
 module.exports = {
   getAllVolunteers,
   getOneVolunteer,
-  register,
-  login,
+  registerVolunteer,
+  loginVolunteer,
+  verifyVolunteer,
   updateVolunteer,
   deleteVolunteer,
   deleteAll,

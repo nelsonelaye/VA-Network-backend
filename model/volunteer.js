@@ -32,7 +32,7 @@ const volunteerSchema = mongoose.Schema(
       type: String,
     },
     interests: {
-      type: Array,
+      type: [String],
     },
     isVerify: {
       type: Boolean,
